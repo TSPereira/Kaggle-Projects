@@ -8,6 +8,10 @@ from torch.utils.data import DataLoader
 from sklearn import model_selection
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
+import torchsample
+from torchsample.modules import ModuleTrainer
+from torchsample import TensorDataset
+import torchvision.transforms as tstf
 
 #Read the data
 data = pd.read_csv('train.csv')
@@ -27,12 +31,30 @@ del data, test
 
 #Create network, criterion and optimizer
 net = CNN.Net()
-criterion = torch.nn.CrossEntropyLoss()
-lr = 0.001
-optimizer = optim.Adam(net.parameters(),lr=lr)
+#criterion = torch.nn.CrossEntropyLoss()
+#lr = 0.001
+#optimizer = optim.Adam(net.parameters(),lr=lr)
 nr_epochs = 20
+trainer = ModuleTrainer(net)
+metrics = [torchsample.metrics.CategoricalAccuracy(top_k=3)]
+trainer.compile(optimizer=optim.Adam(net.parameters(),lr=0.001),loss=torch.nn.CrossEntropyLoss(),metrics=metrics)
+
+batch_size = 64
+X_t, X_ts, y_t, y_ts = train_test_split(X_train, y_train, test_size=0.15, random_state=42)
+
+tf = tstf.Compose([tstf.ToPILImage(), tstf.RandomRotation(10), tstf.ToTensor()])
+
+trainData = CNN.prepData(X_t, y_t, input_transform=tf)
+trainDataL = DataLoader(trainData, batch_size=batch_size)
+
+testData = CNN.prepData(X_ts, y_ts)
+testDataL = DataLoader(testData, batch_size=batch_size)
 
 
+trainer.fit_loader(trainDataL, val_loader=testDataL, num_epoch=nr_epochs, verbose=1)
+#loss_ts = trainer.evaluate_loader()
+
+'''
 #Define train and test passages for learning and evaluation
 def train(epoch):
 	net.train()
@@ -101,8 +123,9 @@ batch_size = 64
 
 X_t, X_ts, y_t, y_ts = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
+
 trainData = CNN.prepData(X_t, y_t)
-trainDataL = DataLoader(trainData, batch_size=batch_size)
+trainDataL = DataLoader(trainData, batch_size=batch_size, )
 
 testData = CNN.prepData(X_ts, y_ts)
 testDataL = DataLoader(testData, batch_size=batch_size)
@@ -112,4 +135,4 @@ acc_tr, loss_tr = [[], []], [[], []]
 for epoch in range(epochs):
 	train(epoch)
 	test(epoch)
-	
+'''
